@@ -26,7 +26,7 @@ class ZK(object):
         '''
         Puts a the parts that make up a packet together and packs them into a byte string
         '''
-        buf = pack('HHHH', command, checksum, session_id, reply_id) + command_string
+        buf = pack('HHHH', command, checksum, session_id, reply_id) + command_string.encode("ascii")
         buf = unpack('8B' + '%sB' % len(command_string), buf)
         checksum = unpack('H', self.__create_checksum(buf))[0]
         reply_id += 1
@@ -34,7 +34,7 @@ class ZK(object):
             reply_id -= const.USHRT_MAX
 
         buf = pack('HHHH', command, checksum, session_id, reply_id)
-        return buf + command_string
+        return buf + command_string.encode("ascii")
 
     def __create_checksum(self, p):
         '''
@@ -70,7 +70,7 @@ class ZK(object):
         try:
             self.__sock.sendto(buf, self.__address)
             self.__data_recv = self.__sock.recv(response_size)
-        except Exception, e:
+        except Exception as e:
             raise ZKNetworkError(str(e))
 
         self.__response = unpack('HHHH', self.__data_recv[:8])[0]
@@ -101,7 +101,7 @@ class ZK(object):
 
     def __reverse_hex(self, hex):
         data = ''
-        for i in reversed(xrange(len(hex) / 2)):
+        for i in reversed(range(len(hex) // 2)):
             data += hex[i * 2:(i * 2) + 2]
         return data
 
@@ -113,19 +113,19 @@ class ZK(object):
         t = int(self.__reverse_hex(t), 16)
 
         second = t % 60
-        t = t / 60
+        t = t // 60
 
         minute = t % 60
-        t = t / 60
+        t = t // 60
 
         hour = t % 24
-        t = t / 24
+        t = t // 24
 
         day = t % 31 + 1
-        t = t / 31
+        t = t // 31
 
         month = t % 12 + 1
-        t = t / 12
+        t = t // 12
 
         year = t + 2000
 
@@ -222,7 +222,7 @@ class ZK(object):
 
         cmd_response = self.__send_command(command, command_string, checksum, session_id, reply_id, response_size)
         if cmd_response.get('status'):
-            firmware_version = self.__data_recv[8:].strip('\x00|\x01\x10x')
+            firmware_version = self.__data_recv[8:].decode("ascii").strip('\x00|\x01\x10x')
             return firmware_version
         else:
             raise ZKErrorResponse("Invalid response")
@@ -240,7 +240,7 @@ class ZK(object):
 
         cmd_response = self.__send_command(command, command_string, checksum, session_id, reply_id, response_size)
         if cmd_response.get('status'):
-            serialnumber = self.__data_recv[8:].split('=')[-1].strip('\x00|\x01\x10x')
+            serialnumber = self.__data_recv[8:].decode("ascii").split('=')[-1].strip('\x00|\x01\x10x')
             return serialnumber
         else:
             raise ZKErrorResponse("Invalid response")
@@ -371,7 +371,7 @@ class ZK(object):
                 if response == const.CMD_ACK_OK:
                     if userdata:
                         # The first 4 bytes don't seem to be related to the user
-                        for x in xrange(len(userdata)):
+                        for x in range(len(userdata)):
                             if x > 0:
                                 userdata[x] = userdata[x][8:]
 
@@ -384,10 +384,10 @@ class ZK(object):
 
                             uid = u1 + (u2 * 256)
                             privilege = int(privilege.encode("hex"), 16)
-                            password = unicode(password.strip('\x00|\x01\x10x'), errors='ignore')
-                            name = unicode(name.strip('\x00|\x01\x10x'), errors='ignore')
-                            group_id = unicode(group_id.strip('\x00|\x01\x10x'), errors='ignore')
-                            user_id = unicode(user_id.strip('\x00|\x01\x10x'), errors='ignore')
+                            password = str(password.strip('\x00|\x01\x10x'), errors='ignore')
+                            name = str(name.strip('\x00|\x01\x10x'), errors='ignore')
+                            group_id = str(group_id.strip('\x00|\x01\x10x'), errors='ignore')
+                            user_id = str(user_id.strip('\x00|\x01\x10x'), errors='ignore')
 
                             user = User(uid, name, privilege, password, group_id, user_id)
                             users.append(user)
@@ -405,7 +405,7 @@ class ZK(object):
 
         command = const.CMD_CANCELCAPTURE
         cmd_response = self.__send_command(command=command)
-        print cmd_response
+        print(cmd_response)
 
     def verify_user(self):
         '''
@@ -415,7 +415,7 @@ class ZK(object):
         command = const.CMD_STARTVERIFY
         # uid = chr(uid % 256) + chr(uid >> 8)
         cmd_response = self.__send_command(command=command)
-        print cmd_response
+        print(cmd_response)
 
     def enroll_user(self, uid):
         '''
@@ -426,7 +426,7 @@ class ZK(object):
         uid = chr(uid % 256) + chr(uid >> 8)
         command_string = pack('2s', uid)
         cmd_response = self.__send_command(command=command, command_string=command_string)
-        print cmd_response
+        print(cmd_response)
 
     def clear_data(self):
         '''
@@ -472,7 +472,7 @@ class ZK(object):
                 if response == const.CMD_ACK_OK:
                     if attendance_data:
                         # The first 4 bytes don't seem to be related to the user
-                        for x in xrange(len(attendance_data)):
+                        for x in range(len(attendance_data)):
                             if x > 0:
                                 attendance_data[x] = attendance_data[x][8:]
 
