@@ -2,6 +2,7 @@
 from datetime import datetime
 from socket import AF_INET, SOCK_DGRAM, socket
 from struct import pack, unpack
+import binascii
 
 from zk import const
 from zk.attendance import Attendance
@@ -109,7 +110,7 @@ class ZK(object):
         """Decode a timestamp retrieved from the timeclock
 
         copied from zkemsdk.c - DecodeTime"""
-        t = t.encode('hex')
+        t = binascii.hexlify(t).decode("ascii")
         t = int(self.__reverse_hex(t), 16)
 
         second = t % 60
@@ -242,6 +243,25 @@ class ZK(object):
         if cmd_response.get('status'):
             serialnumber = self.__data_recv[8:].decode("ascii").split('=')[-1].strip('\x00|\x01\x10x')
             return serialnumber
+        else:
+            raise ZKErrorResponse("Invalid response")
+
+    def get_time(self):
+        """
+        return the time
+        """
+        command = const.CMD_GET_TIME
+        command_string = ''
+        checksum = 0
+        session_id = self.__sesion_id
+        reply_id = self.__reply_id
+        response_size = 1024
+
+        cmd_response = self.__send_command(command, command_string, checksum, session_id, reply_id, response_size)
+
+        if cmd_response.get("status"):
+            time = self.__decode_time(self.__data_recv[8:])
+            return time
         else:
             raise ZKErrorResponse("Invalid response")
 
