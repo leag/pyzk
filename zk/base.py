@@ -2,7 +2,6 @@
 from datetime import datetime
 from socket import AF_INET, SOCK_DGRAM, socket
 from struct import pack, unpack
-import binascii
 
 from zk import const
 from zk.attendance import Attendance
@@ -105,34 +104,14 @@ class ZK(object):
         else:
             return 0
 
-    @staticmethod
-    def __reverse_hex(hex_str):
-        data = ''
-        for i in reversed(range(len(hex_str) // 2)):
-            data += hex_str[i * 2:(i * 2) + 2]
-        return data
-
     def __decode_time(self, t):
         """
         Decode a timestamp retrieved from the timeclock
         """
 
-        t = binascii.hexlify(t).decode("ascii")
-        t = int(self.__reverse_hex(t), 16)
+        t = int.from_bytes(t, byteorder="little")
+        return datetime.fromtimestamp(t+936414000) # 60*60*24*31*12*29
 
-        second = t % 60
-        t //= 60
-        minute = t % 60
-        t //= 60
-        hour = t % 24
-        t //= 24
-        day = t % 31 + 1
-        t //= 31
-        month = t % 12 + 1
-        t //= 12
-        year = t + 2000
-        d = datetime(year, month, day, hour, minute, second)
-        return d
 
     def connect(self):
         """
