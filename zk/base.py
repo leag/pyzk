@@ -141,8 +141,6 @@ class ZK(object):
 
         cmd_response = self.__send_command(
             command=const.CMD_CONNECT,
-            command_string=b'',
-            checksum=0,
             session_id=0,
             reply_id=const.USHRT_MAX - 1,
             response_size=8)
@@ -161,8 +159,6 @@ class ZK(object):
 
         cmd_response = self.__send_command(
             command=const.CMD_EXIT,
-            command_string=b'',
-            checksum=0,
             session_id=self.__session_id,
             reply_id=self.__reply_id,
             response_size=8)
@@ -180,8 +176,6 @@ class ZK(object):
 
         cmd_response = self.__send_command(
             command=const.CMD_DISABLEDEVICE,
-            command_string=b'',
-            checksum=0,
             session_id=self.__session_id,
             reply_id=self.__reply_id,
             response_size=8)
@@ -197,8 +191,6 @@ class ZK(object):
 
         cmd_response = self.__send_command(
             command=const.CMD_ENABLEDEVICE,
-            command_string=b'',
-            checksum=0,
             session_id=self.__session_id,
             reply_id=self.__reply_id,
             response_size=8)
@@ -214,8 +206,6 @@ class ZK(object):
 
         cmd_response = self.__send_command(
             command=const.CMD_GET_VERSION,
-            command_string=b'',
-            checksum=0,
             session_id=self.__session_id,
             reply_id=self.__reply_id,
             response_size=1024)
@@ -233,7 +223,6 @@ class ZK(object):
         cmd_response = self.__send_command(
             command=const.CMD_OPTIONS_RRQ,
             command_string=b'~SerialNumber',
-            checksum=0,
             session_id=self.__session_id,
             reply_id=self.__reply_id,
             response_size=1024)
@@ -250,8 +239,6 @@ class ZK(object):
 
         cmd_response = self.__send_command(
             command=const.CMD_GET_TIME,
-            command_string=b'',
-            checksum=0,
             session_id=self.__session_id,
             reply_id=self.__reply_id,
             response_size=1024)
@@ -268,8 +255,6 @@ class ZK(object):
 
         cmd_response = self.__send_command(
             command=const.CMD_RESTART,
-            command_string=b'',
-            checksum=0,
             session_id=self.__session_id,
             reply_id=self.__reply_id,
             response_size=8)
@@ -285,8 +270,6 @@ class ZK(object):
 
         cmd_response = self.__send_command(
             command=const.CMD_POWEROFF,
-            command_string=b'',
-            checksum=0,
             session_id=self.__session_id,
             reply_id=self.__reply_id,
             response_size=8)
@@ -302,8 +285,6 @@ class ZK(object):
 
         cmd_response = self.__send_command(
             command=const.CMD_TESTVOICE,
-            command_string=b'',
-            checksum=0,
             session_id=self.__session_id,
             reply_id=self.__reply_id,
             response_size=8)
@@ -324,7 +305,6 @@ class ZK(object):
         cmd_response = self.__send_command(
             command=const.CMD_USER_WRQ,
             command_string=pack('2sc8s28sc7sx24s', uid, privilege, password, name, chr(0), group_id, user_id),
-            checksum=0,
             session_id=self.__session_id,
             reply_id=self.__reply_id,
             response_size=1024)
@@ -342,7 +322,6 @@ class ZK(object):
         cmd_response = self.__send_command(
             command=const.CMD_DELETE_USER,
             command_string=pack('2s', uid),
-            checksum=0,
             session_id=self.__session_id,
             reply_id=self.__reply_id,
             response_size=1024)
@@ -359,7 +338,6 @@ class ZK(object):
         cmd_response = self.__send_command(
             command=const.CMD_USERTEMP_RRQ,
             command_string=chr(const.FCT_USER).encode('ascii'),
-            checksum=0,
             session_id=self.__session_id,
             reply_id=self.__reply_id,
             response_size=1024)
@@ -385,7 +363,7 @@ class ZK(object):
                         user_data = b''.join(user_data)
                         user_data = user_data[12:]
                         while len(user_data) >= 72:
-                            uid, privilege, password, name, sparator, group_id, user_id = unpack('2sc8s28sc7sx24s', user_data.ljust(72)[:72])
+                            uid, privilege, password, name, _, group_id, user_id = unpack('2sc8s28sc7sx24s', user_data.ljust(72)[:72])
                             uid = int.from_bytes(uid, byteorder='little')
                             privilege = int.from_bytes(privilege, byteorder='little')
                             password = self.__clean_bytes(password)
@@ -438,8 +416,6 @@ class ZK(object):
 
         cmd_response = self.__send_command(
             command=const.CMD_CLEAR_DATA,
-            command_string=b'',
-            checksum=0,
             session_id=self.__session_id,
             reply_id=self.__reply_id,
             response_size=1024)
@@ -455,8 +431,6 @@ class ZK(object):
 
         cmd_response = self.__send_command(
             command=const.CMD_ATTLOG_RRQ,
-            command_string=b'',
-            checksum=0,
             session_id=self.__session_id,
             reply_id=self.__reply_id,
             response_size=1024)
@@ -482,9 +456,7 @@ class ZK(object):
                         attendance_data = ''.join(attendance_data)
                         attendance_data = attendance_data[14:]
                         while len(attendance_data) >= 38:
-                            user_id, separator, timestamp, status, space = unpack('24sc4sc10s',
-                                                                                  attendance_data.encode('ascii').ljust(
-                                                                                      40)[:40])
+                            user_id, _, timestamp, status, _ = unpack('24sc4sc10s', attendance_data.encode('ascii').ljust(40)[:40])
 
                             user_id = user_id.strip('\x00|\x01\x10x')
                             timestamp = self.__decode_time(timestamp)
@@ -506,8 +478,6 @@ class ZK(object):
 
         cmd_response = self.__send_command(
             command=const.CMD_CLEAR_ATTLOG,
-            command_string=b'',
-            checksum=0,
             session_id=self.__session_id,
             reply_id=self.__reply_id,
             response_size=1024)
