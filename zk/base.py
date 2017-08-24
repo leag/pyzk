@@ -12,7 +12,7 @@ from zk.user import User
 
 class ZK(object):
 
-    is_connect = False
+    is_connected = False
 
     __data_recv = None
     __session_id = 0
@@ -147,7 +147,7 @@ class ZK(object):
             reply_id=const.USHRT_MAX - 1,
             response_size=8)
         if cmd_response.get('status'):
-            self.is_connect = True
+            self.is_connected = True
             # set the session id
             self.__session_id = unpack('HHHH', self.__data_recv[:8])[2]
             return self
@@ -167,6 +167,8 @@ class ZK(object):
             reply_id=self.__reply_id,
             response_size=8)
         if cmd_response.get('status'):
+            self.is_connected = False
+            self.__session_id = 0
             return True
         else:
             raise ZKErrorResponse("Invalid response")
@@ -351,7 +353,7 @@ class ZK(object):
 
     def get_users(self):
         """
-        return all user
+        Return all users
         """
 
         cmd_response = self.__send_command(
@@ -401,7 +403,7 @@ class ZK(object):
 
     def cancel_capture(self):
         """
-        cancel capturing finger
+        Cancel capturing finger
         """
 
         command = const.CMD_CANCELCAPTURE
@@ -431,16 +433,16 @@ class ZK(object):
 
     def clear_data(self):
         """
-        clear all data (include: user, attendance report, finger database )
+        Clear all data (include: user, attendance report, finger database )
         """
-        command = const.CMD_CLEAR_DATA
-        command_string = b''
-        checksum = 0
-        session_id = self.__session_id
-        reply_id = self.__reply_id
-        response_size = 1024
 
-        cmd_response = self.__send_command(command, command_string, checksum, session_id, reply_id, response_size)
+        cmd_response = self.__send_command(
+            command=const.CMD_CLEAR_DATA,
+            command_string=b'',
+            checksum=0,
+            session_id=self.__session_id,
+            reply_id=self.__reply_id,
+            response_size=1024)
         if cmd_response.get('status'):
             return True
         else:
@@ -499,7 +501,7 @@ class ZK(object):
 
     def clear_attendance(self):
         """
-        clear all attendance record
+        Clear all attendance record
         """
 
         cmd_response = self.__send_command(
