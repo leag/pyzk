@@ -28,22 +28,18 @@ class ZK(object):
         Puts a the parts that make up a packet together and packs them into a byte string
         """
         buf = pack('HHHH', command, checksum, session_id, reply_id) + command_string
-        buf = unpack('8B' + '%sB' % len(command_string), buf)
         checksum = unpack('H', self.__create_checksum(buf))[0]
         reply_id += 1
         if reply_id >= const.USHRT_MAX:
             reply_id -= const.USHRT_MAX
-
-
         buf = pack('HHHH', command, checksum, session_id, reply_id)
         return buf + command_string
 
     @staticmethod
-    def __create_checksum(p):
+    def __create_checksum(pkt):
         """
         Calculates the checksum of the packet to be sent to the time clock
         """
-        pkt = pack('%sB' % len(p), *p)
         if len(pkt) % 2 == 1:
             pkt += b"\0"
         s = sum(array.array("H", pkt))
@@ -56,7 +52,7 @@ class ZK(object):
     def __clean_bytes(s):
         return s.decode('windows-1252').strip('\x00')
 
-    def __send_command(self, command=const.CMD_CONNECT, command_string=b'', checksum=0, session_id=0, reply_id=const.USHRT_MAX - 1, response_size=8):
+    def __send_command(self, command, command_string=b'', checksum=0, session_id=0, reply_id=const.USHRT_MAX - 1, response_size=8):
         """
         Send command to the terminal
         """
