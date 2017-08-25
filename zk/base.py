@@ -7,6 +7,7 @@ from zk import const
 from zk.attendance import Attendance
 from zk.exception import ZKErrorResponse, ZKNetworkError
 from zk.user import User
+import array
 
 
 class ZK(object):
@@ -33,6 +34,7 @@ class ZK(object):
         if reply_id >= const.USHRT_MAX:
             reply_id -= const.USHRT_MAX
 
+
         buf = pack('HHHH', command, checksum, session_id, reply_id)
         return buf + command_string
 
@@ -40,28 +42,15 @@ class ZK(object):
     def __create_checksum(p):
         """
         Calculates the checksum of the packet to be sent to the time clock
-        Copied from zkemsdk.c
         """
-        l = len(p)
-        checksum = 0
-        while l > 1:
-            checksum += unpack('H', pack('BB', p[0], p[1]))[0]
-            p = p[2:]
-            if checksum > const.USHRT_MAX:
-                checksum -= const.USHRT_MAX
-            l -= 2
-        if l:
-            checksum = checksum + p[-1]
-
-        while checksum > const.USHRT_MAX:
-            checksum -= const.USHRT_MAX
-
-        checksum = ~checksum
-
-        while checksum < 0:
-            checksum += const.USHRT_MAX
-
-        return pack('H', checksum)
+        pkt = pack('%sB' % len(p), *p)
+        if len(pkt) % 2 == 1:
+            pkt += b"\0"
+        s = sum(array.array("H", pkt))
+        s = (s >> 16) + (s & 0xffff)
+        s += s >> 16
+        s = ~s
+        return pack('H',((s & 0xffff)-1))
 
     @staticmethod
     def __clean_bytes(s):
@@ -69,7 +58,7 @@ class ZK(object):
 
     def __send_command(self, command=const.CMD_CONNECT, command_string=b'', checksum=0, session_id=0, reply_id=const.USHRT_MAX - 1, response_size=8):
         """
-        send command to the terminal
+        Send command to the terminal
         """
         buf = self.__create_header(command, command_string, checksum, session_id, reply_id)
         try:
@@ -104,14 +93,14 @@ class ZK(object):
         else:
             return 0
 
-    def __decode_time(self, t):
+    @staticmethod
+    def __decode_time(t):
         """
         Decode a timestamp retrieved from the timeclock
         """
 
         t = int.from_bytes(t, byteorder="little")
-        return datetime.fromtimestamp(t+936414000) # 60*60*24*31*12*29
-
+        return datetime.fromtimestamp(t + const.TIMESTAMP_DELTA)
 
     def connect(self):
         """
