@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-USHRT_MAX = 65535
+USHRT_MAX = 65535           #0xffff
 
 CMD_DB_RRQ          = 7     # Read in some kind of data from the machine
 CMD_USER_WRQ        = 8     # Upload the user information (from PC to terminal).
@@ -103,3 +103,4 @@ FCT_OPLOG           = 4
 FCT_USER            = 5
 FCT_SMS             = 6
 FCT_UDATA           = 7
+TIMESTAMP_DELTA     = 60*60*24*31*12*29
