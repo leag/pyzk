@@ -11,7 +11,6 @@ import array
 
 
 class ZK(object):
-
     is_connected = False
 
     __data_recv = None
@@ -46,7 +45,7 @@ class ZK(object):
         s = (s >> 16) + (s & 0xffff)
         s += s >> 16
         s = ~s
-        return pack('H', (s & 0xffff)-1)
+        return pack('H', (s & 0xffff) - 1)
 
     @staticmethod
     def __clean_bytes(s):
@@ -74,9 +73,9 @@ class ZK(object):
             self.__data_recv = self.__sock.recv(response_size)
         except Exception as e:
             raise ZKNetworkError(str(e))
-
-        self.__response = unpack('HHHH', self.__data_recv[:8])[0]
-        self.__reply_id = unpack('HHHH', self.__data_recv[:8])[3]
+        buf = unpack('HHHH', self.__data_recv[:8])
+        self.__response = buf[0]
+        self.__reply_id = buf[3]
 
         if self.__response in [const.CMD_ACK_OK, const.CMD_PREPARE_DATA]:
             return {'status': True, 'code': self.__response}
@@ -198,7 +197,8 @@ class ZK(object):
             privilege = const.USER_DEFAULT
         privilege = chr(privilege)
         self.__send_command(command=const.CMD_USER_WRQ,
-                            command_string=pack('2sc8s28sc7sx24s', uid, privilege, password, chr(0), name, group_id, user_id))
+                            command_string=pack('2sc8s28sc7sx24s', uid, privilege, password, chr(0), name, group_id,
+                                                user_id))
         return True
 
     def delete_user(self, uid):
@@ -207,7 +207,7 @@ class ZK(object):
         """
 
         uid = chr(uid % 256) + chr(uid >> 8)
-        self.__send_command(command=const.CMD_DELETE_USER, command_string=pack('2s', uid),)
+        self.__send_command(command=const.CMD_DELETE_USER, command_string=pack('2s', uid), )
         return True
 
     def get_users(self):
@@ -215,7 +215,8 @@ class ZK(object):
         Return all users
         """
 
-        cmd_response = self.__send_command(command=const.CMD_USERTEMP_RRQ, command_string=const.FCT_USER.to_bytes(1, 'little'))
+        cmd_response = self.__send_command(command=const.CMD_USERTEMP_RRQ,
+                                           command_string=const.FCT_USER.to_bytes(1, 'little'))
         users = []
         if cmd_response.get('status'):
             if cmd_response.get('code') == const.CMD_PREPARE_DATA:
@@ -238,7 +239,8 @@ class ZK(object):
                         user_data = b''.join(user_data)
                         user_data = user_data[12:]
                         while len(user_data) >= 72:
-                            uid, privilege, password, name, _, group_id, user_id = unpack('2sc8s28sc7sx24s', user_data.ljust(72)[:72])
+                            uid, privilege, password, name, _, group_id, user_id = unpack('2sc8s28sc7sx24s',
+                                                                                          user_data.ljust(72)[:72])
                             uid = int.from_bytes(uid, byteorder='little')
                             privilege = int.from_bytes(privilege, byteorder='little')
                             password = self.__clean_bytes(password)
@@ -317,7 +319,8 @@ class ZK(object):
                         attendance_data = ''.join(attendance_data)
                         attendance_data = attendance_data[14:]
                         while len(attendance_data) >= 38:
-                            user_id, _, timestamp, status, _ = unpack('24sc4sc10s', attendance_data.encode('ascii').ljust(40)[:40])
+                            user_id, _, timestamp, status, _ = unpack('24sc4sc10s',
+                                                                      attendance_data.encode('ascii').ljust(40)[:40])
 
                             user_id = user_id.strip('\x00|\x01\x10x')
                             timestamp = self.__decode_time(timestamp)
