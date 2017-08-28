@@ -52,10 +52,22 @@ class ZK(object):
     def __clean_bytes(s):
         return s.decode('windows-1252').strip('\x00')
 
-    def __send_command(self, command, command_string=b'', checksum=0, session_id=0, reply_id=const.USHRT_MAX - 1, response_size=8):
+    def __send_command(self, command, command_string=b'', checksum=0, response_size = 1024 ):
         """
         Send command to the terminal
         """
+        reply_id = const.USHRT_MAX - 1
+        session_id = 0
+        if self.is_connected and command != const.CMD_CONNECT:
+                reply_id = self.__reply_id
+                session_id = self.__session_id
+        elif self.is_connected and command == const.CMD_CONNECT:
+            raise ZKNetworkError("Connection already stablished, disconnect first")
+        elif command == const.CMD_CONNECT:
+            pass
+        else:
+            raise ZKNetworkError("Cannot send commands without connection, connect first")
+
         buf = self.__create_header(command, command_string, checksum, session_id, reply_id)
         try:
             self.__sock.sendto(buf, self.__address)
@@ -103,11 +115,7 @@ class ZK(object):
         Connect to the device
         """
 
-        cmd_response = self.__send_command(
-            command=const.CMD_CONNECT,
-            session_id=0,
-            reply_id=const.USHRT_MAX - 1,
-            response_size=8)
+        cmd_response = self.__send_command(command=const.CMD_CONNECT, response_size=8)
         if cmd_response.get('status'):
             self.is_connected = True
             # set the session id
@@ -121,14 +129,9 @@ class ZK(object):
         Disconnect from the connected device
         """
 
-        cmd_response = self.__send_command(
-            command=const.CMD_EXIT,
-            session_id=self.__session_id,
-            reply_id=self.__reply_id,
-            response_size=8)
+        cmd_response = self.__send_command(command=const.CMD_EXIT, response_size=8)
         if cmd_response.get('status'):
             self.is_connected = False
-            self.__session_id = 0
             return True
         else:
             raise ZKErrorResponse("Invalid response")
@@ -138,11 +141,7 @@ class ZK(object):
         Disable (lock) device, ensure no activity when process run
         """
 
-        cmd_response = self.__send_command(
-            command=const.CMD_DISABLEDEVICE,
-            session_id=self.__session_id,
-            reply_id=self.__reply_id,
-            response_size=8)
+        cmd_response = self.__send_command(command=const.CMD_DISABLEDEVICE, response_size=8)
         if cmd_response.get('status'):
             return True
         else:
@@ -153,11 +152,7 @@ class ZK(object):
         Enable the connected device
         """
 
-        cmd_response = self.__send_command(
-            command=const.CMD_ENABLEDEVICE,
-            session_id=self.__session_id,
-            reply_id=self.__reply_id,
-            response_size=8)
+        cmd_response = self.__send_command(command=const.CMD_ENABLEDEVICE, response_size=8)
         if cmd_response.get('status'):
             return True
         else:
@@ -168,11 +163,7 @@ class ZK(object):
         Return the firmware version
         """
 
-        cmd_response = self.__send_command(
-            command=const.CMD_GET_VERSION,
-            session_id=self.__session_id,
-            reply_id=self.__reply_id,
-            response_size=1024)
+        cmd_response = self.__send_command(command=const.CMD_GET_VERSION)
         if cmd_response.get('status'):
             firmware_version = self.__clean_bytes(self.__data_recv[8:])
             return firmware_version
@@ -184,15 +175,9 @@ class ZK(object):
         Return the serial number
         """
 
-        cmd_response = self.__send_command(
-            command=const.CMD_OPTIONS_RRQ,
-            command_string=b'~SerialNumber',
-            session_id=self.__session_id,
-            reply_id=self.__reply_id,
-            response_size=1024)
+        cmd_response = self.__send_command(command=const.CMD_OPTIONS_RRQ,command_string=b'~SerialNumber',)
         if cmd_response.get('status'):
-            serial_number = self.__clean_bytes(self.__data_recv[8:]).split('=')[-1]
-            return serial_number
+            return self.__clean_bytes(self.__data_recv[8:]).split('=')[-1]
         else:
             raise ZKErrorResponse("Invalid response")
 
@@ -201,12 +186,7 @@ class ZK(object):
         return the time
         """
 
-        cmd_response = self.__send_command(
-            command=const.CMD_GET_TIME,
-            session_id=self.__session_id,
-            reply_id=self.__reply_id,
-            response_size=1024)
-
+        cmd_response = self.__send_command(command=const.CMD_GET_TIME)
         if cmd_response.get("status"):
             return self.__decode_time(self.__data_recv[8:])
         else:
@@ -217,11 +197,7 @@ class ZK(object):
         restart the device
         """
 
-        cmd_response = self.__send_command(
-            command=const.CMD_RESTART,
-            session_id=self.__session_id,
-            reply_id=self.__reply_id,
-            response_size=8)
+        cmd_response = self.__send_command(command=const.CMD_RESTART, response_size=8)
         if cmd_response.get('status'):
             return True
         else:
@@ -232,11 +208,7 @@ class ZK(object):
         shutdown the device
         """
 
-        cmd_response = self.__send_command(
-            command=const.CMD_POWEROFF,
-            session_id=self.__session_id,
-            reply_id=self.__reply_id,
-            response_size=8)
+        cmd_response = self.__send_command(command=const.CMD_POWEROFF, response_size=8)
         if cmd_response.get('status'):
             return True
         else:
@@ -247,11 +219,7 @@ class ZK(object):
         play test voice
         """
 
-        cmd_response = self.__send_command(
-            command=const.CMD_TESTVOICE,
-            session_id=self.__session_id,
-            reply_id=self.__reply_id,
-            response_size=8)
+        cmd_response = self.__send_command(command=const.CMD_TESTVOICE, response_size=8)
         if cmd_response.get('status'):
             return True
         else:
@@ -268,10 +236,7 @@ class ZK(object):
         privilege = chr(privilege)
         cmd_response = self.__send_command(
             command=const.CMD_USER_WRQ,
-            command_string=pack('2sc8s28sc7sx24s', uid, privilege, password, name, chr(0), group_id, user_id),
-            session_id=self.__session_id,
-            reply_id=self.__reply_id,
-            response_size=1024)
+            command_string=pack('2sc8s28sc7sx24s', uid, privilege, password, name, chr(0), group_id, user_id),)
         if cmd_response.get('status'):
             return True
         else:
@@ -285,10 +250,7 @@ class ZK(object):
         uid = chr(uid % 256) + chr(uid >> 8)
         cmd_response = self.__send_command(
             command=const.CMD_DELETE_USER,
-            command_string=pack('2s', uid),
-            session_id=self.__session_id,
-            reply_id=self.__reply_id,
-            response_size=1024)
+            command_string=pack('2s', uid),)
         if cmd_response.get('status'):
             return True
         else:
@@ -299,12 +261,7 @@ class ZK(object):
         Return all users
         """
 
-        cmd_response = self.__send_command(
-            command=const.CMD_USERTEMP_RRQ,
-            command_string=chr(const.FCT_USER).encode('ascii'),
-            session_id=self.__session_id,
-            reply_id=self.__reply_id,
-            response_size=1024)
+        cmd_response = self.__send_command(command=const.CMD_USERTEMP_RRQ, command_string=const.FCT_USER.to_bytes(1,'little'))
         users = []
         if cmd_response.get('status'):
             if cmd_response.get('code') == const.CMD_PREPARE_DATA:
@@ -379,10 +336,7 @@ class ZK(object):
         """
 
         cmd_response = self.__send_command(
-            command=const.CMD_CLEAR_DATA,
-            session_id=self.__session_id,
-            reply_id=self.__reply_id,
-            response_size=1024)
+            command=const.CMD_CLEAR_DATA,)
         if cmd_response.get('status'):
             return True
         else:
@@ -394,10 +348,7 @@ class ZK(object):
         """
 
         cmd_response = self.__send_command(
-            command=const.CMD_ATTLOG_RRQ,
-            session_id=self.__session_id,
-            reply_id=self.__reply_id,
-            response_size=1024)
+            command=const.CMD_ATTLOG_RRQ,)
         attendances = []
         if cmd_response.get('status'):
             if cmd_response.get('code') == const.CMD_PREPARE_DATA:
@@ -441,10 +392,7 @@ class ZK(object):
         """
 
         cmd_response = self.__send_command(
-            command=const.CMD_CLEAR_ATTLOG,
-            session_id=self.__session_id,
-            reply_id=self.__reply_id,
-            response_size=1024)
+            command=const.CMD_CLEAR_ATTLOG,)
         if cmd_response.get('status'):
             return True
         else:

@@ -8,7 +8,7 @@ sys.path.append("zk")
 DEBUG = True
 
 conn = None
-zk = ZK('186.67.46.5', port=4370, timeout=5)
+zk = ZK('200.54.225.67', port=4370, timeout=5)
 try:
     print('Connecting to device ...')
     conn = zk.connect()
@@ -31,7 +31,7 @@ try:
 
     #print("Voice Test ...")
     #conn.test_voice()
-    print('Serial Number: {}'.format(conn.get_serialnumber()))
+    print('Serial Number: {}'.format(conn.get_serial_number()))
     print('Time: {}'.format(conn.get_time()))
     print('Enabling device ...')
     conn.enable_device()
