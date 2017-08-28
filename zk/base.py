@@ -232,9 +232,9 @@ class ZK(object):
                 if response == const.CMD_ACK_OK:
                     if user_data:
                         # The first 4 bytes don't seem to be related to the user
-                        for x in range(len(user_data)):
-                            if x > 0:
-                                user_data[x] = user_data[x][8:]
+                        for index, data in enumerate(user_data):
+                            if index > 0:
+                                user_data[index] = data[8:]
 
                         user_data = b''.join(user_data)
                         user_data = user_data[12:]
@@ -312,9 +312,9 @@ class ZK(object):
                 if response == const.CMD_ACK_OK:
                     if attendance_data:
                         # The first 4 bytes don't seem to be related to the user
-                        for x in range(len(attendance_data)):
-                            if x > 0:
-                                attendance_data[x] = attendance_data[x][8:]
+                        for index, data in enumerate(attendance_data):
+                            if index > 0:
+                                attendance_data[index] = attendance_data[index][8:]
 
                         attendance_data = ''.join(attendance_data)
                         attendance_data = attendance_data[14:]
