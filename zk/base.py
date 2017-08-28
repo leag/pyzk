@@ -314,7 +314,7 @@ class ZK(object):
                         # The first 4 bytes don't seem to be related to the user
                         for index, data in enumerate(attendance_data):
                             if index > 0:
-                                attendance_data[index] = attendance_data[index][8:]
+                                attendance_data[index] = data[8:]
 
                         attendance_data = ''.join(attendance_data)
                         attendance_data = attendance_data[14:]
