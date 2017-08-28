@@ -46,17 +46,17 @@ class ZK(object):
         s = (s >> 16) + (s & 0xffff)
         s += s >> 16
         s = ~s
-        return pack('H',((s & 0xffff)-1))
+        return pack('H', (s & 0xffff)-1)
 
     @staticmethod
     def __clean_bytes(s):
         return s.decode('windows-1252').strip('\x00')
 
-    def __send_command(self, command, command_string=b'', checksum=0, response_size = 1024 ):
+    def __send_command(self, command, command_string=b'', checksum=0, response_size=1024):
         """
         Send command to the terminal
         """
-        
+
         if self.is_connected and command != const.CMD_CONNECT:
             reply_id = self.__reply_id
             session_id = self.__session_id
@@ -79,15 +79,10 @@ class ZK(object):
         self.__reply_id = unpack('HHHH', self.__data_recv[:8])[3]
 
         if self.__response in [const.CMD_ACK_OK, const.CMD_PREPARE_DATA]:
-            return {
-                'status': True,
-                'code': self.__response
-            }
+            return {'status': True, 'code': self.__response}
         else:
-            return {
-                'status': False,
-                'code': self.__response
-            }
+            # return {'status': False, 'code': self.__response}
+            raise ZKErrorResponse("Invalid response")
 
     def __get_data_size(self):
         """Checks a returned packet to see if it returned CMD_PREPARE_DATA,
@@ -115,115 +110,83 @@ class ZK(object):
         Connect to the device
         """
 
-        cmd_response = self.__send_command(command=const.CMD_CONNECT, response_size=8)
-        if cmd_response.get('status'):
-            self.is_connected = True
-            # set the session id
-            self.__session_id = unpack('HHHH', self.__data_recv[:8])[2]
-            return self
-        else:
-            raise ZKErrorResponse("Invalid response")
+        self.__send_command(command=const.CMD_CONNECT, response_size=8)
+        self.is_connected = True
+        self.__session_id = unpack('HHHH', self.__data_recv[:8])[2]
+        return self
 
     def disconnect(self):
         """
         Disconnect from the connected device
         """
 
-        cmd_response = self.__send_command(command=const.CMD_EXIT, response_size=8)
-        if cmd_response.get('status'):
-            self.is_connected = False
-            return True
-        else:
-            raise ZKErrorResponse("Invalid response")
+        self.__send_command(command=const.CMD_EXIT, response_size=8)
+        self.is_connected = False
+        return True
 
     def disable_device(self):
         """
         Disable (lock) device, ensure no activity when process run
         """
 
-        cmd_response = self.__send_command(command=const.CMD_DISABLEDEVICE, response_size=8)
-        if cmd_response.get('status'):
-            return True
-        else:
-            raise ZKErrorResponse("Invalid response")
+        self.__send_command(command=const.CMD_DISABLEDEVICE, response_size=8)
+        return True
 
     def enable_device(self):
         """
         Enable the connected device
         """
 
-        cmd_response = self.__send_command(command=const.CMD_ENABLEDEVICE, response_size=8)
-        if cmd_response.get('status'):
-            return True
-        else:
-            raise ZKErrorResponse("Invalid response")
+        self.__send_command(command=const.CMD_ENABLEDEVICE, response_size=8)
+        return True
 
     def get_firmware_version(self):
         """
         Return the firmware version
         """
 
-        cmd_response = self.__send_command(command=const.CMD_GET_VERSION)
-        if cmd_response.get('status'):
-            firmware_version = self.__clean_bytes(self.__data_recv[8:])
-            return firmware_version
-        else:
-            raise ZKErrorResponse("Invalid response")
+        self.__send_command(command=const.CMD_GET_VERSION)
+        return self.__clean_bytes(self.__data_recv[8:])
 
     def get_serial_number(self):
         """
         Return the serial number
         """
 
-        cmd_response = self.__send_command(command=const.CMD_OPTIONS_RRQ,command_string=b'~SerialNumber',)
-        if cmd_response.get('status'):
-            return self.__clean_bytes(self.__data_recv[8:]).split('=')[-1]
-        else:
-            raise ZKErrorResponse("Invalid response")
+        self.__send_command(command=const.CMD_OPTIONS_RRQ, command_string=b'~SerialNumber')
+        return self.__clean_bytes(self.__data_recv[8:]).split('=')[-1]
 
     def get_time(self):
         """
         return the time
         """
 
-        cmd_response = self.__send_command(command=const.CMD_GET_TIME)
-        if cmd_response.get("status"):
-            return self.__decode_time(self.__data_recv[8:])
-        else:
-            raise ZKErrorResponse("Invalid response")
+        self.__send_command(command=const.CMD_GET_TIME)
+        return self.__decode_time(self.__data_recv[8:])
 
     def restart(self):
         """
         restart the device
         """
 
-        cmd_response = self.__send_command(command=const.CMD_RESTART, response_size=8)
-        if cmd_response.get('status'):
-            return True
-        else:
-            raise ZKErrorResponse("Invalid response")
+        self.__send_command(command=const.CMD_RESTART, response_size=8)
+        return True
 
     def poweroff(self):
         """
         shutdown the device
         """
 
-        cmd_response = self.__send_command(command=const.CMD_POWEROFF, response_size=8)
-        if cmd_response.get('status'):
-            return True
-        else:
-            raise ZKErrorResponse("Invalid response")
+        self.__send_command(command=const.CMD_POWEROFF, response_size=8)
+        return True
 
     def test_voice(self):
         """
         play test voice
         """
 
-        cmd_response = self.__send_command(command=const.CMD_TESTVOICE, response_size=8)
-        if cmd_response.get('status'):
-            return True
-        else:
-            raise ZKErrorResponse("Invalid response")
+        self.__send_command(command=const.CMD_TESTVOICE, response_size=8)
+        return True
 
     def set_user(self, uid, name, privilege, password='', group_id='', user_id=''):
         """
@@ -234,13 +197,9 @@ class ZK(object):
         if privilege not in [const.USER_DEFAULT, const.USER_ADMIN]:
             privilege = const.USER_DEFAULT
         privilege = chr(privilege)
-        cmd_response = self.__send_command(
-            command=const.CMD_USER_WRQ,
-            command_string=pack('2sc8s28sc7sx24s', uid, privilege, password, name, chr(0), group_id, user_id),)
-        if cmd_response.get('status'):
-            return True
-        else:
-            raise ZKErrorResponse("Invalid response")
+        self.__send_command(command=const.CMD_USER_WRQ,
+                            command_string=pack('2sc8s28sc7sx24s', uid, privilege, password, chr(0), name, group_id, user_id))
+        return True
 
     def delete_user(self, uid):
         """
@@ -248,20 +207,15 @@ class ZK(object):
         """
 
         uid = chr(uid % 256) + chr(uid >> 8)
-        cmd_response = self.__send_command(
-            command=const.CMD_DELETE_USER,
-            command_string=pack('2s', uid),)
-        if cmd_response.get('status'):
-            return True
-        else:
-            raise ZKErrorResponse("Invalid response")
+        self.__send_command(command=const.CMD_DELETE_USER, command_string=pack('2s', uid),)
+        return True
 
     def get_users(self):
         """
         Return all users
         """
 
-        cmd_response = self.__send_command(command=const.CMD_USERTEMP_RRQ, command_string=const.FCT_USER.to_bytes(1,'little'))
+        cmd_response = self.__send_command(command=const.CMD_USERTEMP_RRQ, command_string=const.FCT_USER.to_bytes(1, 'little'))
         users = []
         if cmd_response.get('status'):
             if cmd_response.get('code') == const.CMD_PREPARE_DATA:
@@ -305,8 +259,7 @@ class ZK(object):
         Cancel capturing finger
         """
 
-        command = const.CMD_CANCELCAPTURE
-        cmd_response = self.__send_command(command=command)
+        cmd_response = self.__send_command(command=const.CMD_CANCELCAPTURE)
         print(cmd_response)
 
     def verify_user(self):
@@ -314,9 +267,8 @@ class ZK(object):
         verify finger
         """
 
-        command = const.CMD_STARTVERIFY
         # uid = chr(uid % 256) + chr(uid >> 8)
-        cmd_response = self.__send_command(command=command)
+        cmd_response = self.__send_command(command=const.CMD_STARTVERIFY)
         print(cmd_response)
 
     def enroll_user(self, uid):
@@ -324,10 +276,9 @@ class ZK(object):
         start enroll user
         """
 
-        command = const.CMD_STARTENROLL
         uid = chr(uid % 256) + chr(uid >> 8)
         command_string = pack('2s', uid)
-        cmd_response = self.__send_command(command=command, command_string=command_string)
+        cmd_response = self.__send_command(command=const.CMD_STARTENROLL, command_string=command_string)
         print(cmd_response)
 
     def clear_data(self):
@@ -335,20 +286,15 @@ class ZK(object):
         Clear all data (include: user, attendance report, finger database )
         """
 
-        cmd_response = self.__send_command(
-            command=const.CMD_CLEAR_DATA,)
-        if cmd_response.get('status'):
-            return True
-        else:
-            raise ZKErrorResponse("Invalid response")
+        self.__send_command(command=const.CMD_CLEAR_DATA)
+        return True
 
     def get_attendance(self):
         """
         Return all attendance record
         """
 
-        cmd_response = self.__send_command(
-            command=const.CMD_ATTLOG_RRQ,)
+        cmd_response = self.__send_command(command=const.CMD_ATTLOG_RRQ)
         attendances = []
         if cmd_response.get('status'):
             if cmd_response.get('code') == const.CMD_PREPARE_DATA:
@@ -391,9 +337,5 @@ class ZK(object):
         Clear all attendance record
         """
 
-        cmd_response = self.__send_command(
-            command=const.CMD_CLEAR_ATTLOG,)
-        if cmd_response.get('status'):
-            return True
-        else:
-            raise ZKErrorResponse("Invalid response")
+        self.__send_command(command=const.CMD_CLEAR_ATTLOG)
+        return True
