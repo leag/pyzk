@@ -56,15 +56,15 @@ class ZK(object):
         """
         Send command to the terminal
         """
-        reply_id = const.USHRT_MAX - 1
-        session_id = 0
+        
         if self.is_connected and command != const.CMD_CONNECT:
-                reply_id = self.__reply_id
-                session_id = self.__session_id
+            reply_id = self.__reply_id
+            session_id = self.__session_id
         elif self.is_connected and command == const.CMD_CONNECT:
-            raise ZKNetworkError("Connection already stablished, disconnect first")
-        elif command == const.CMD_CONNECT:
-            pass
+            raise ZKNetworkError("Connection already open, disconnect first")
+        elif not self.is_connected and command == const.CMD_CONNECT:
+            reply_id = const.USHRT_MAX - 1
+            session_id = 0
         else:
             raise ZKNetworkError("Cannot send commands without connection, connect first")
 
