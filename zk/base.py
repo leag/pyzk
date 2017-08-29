@@ -26,12 +26,12 @@ class ZK(object):
         """
         Puts a the parts that make up a packet together and packs them into a byte string
         """
-        buf = pack('HHHH', command, checksum, session_id, reply_id) + command_string
+        buf = pack('4H', command, checksum, session_id, reply_id) + command_string
         checksum = unpack('H', self.__create_checksum(buf))[0]
         reply_id += 1
         if reply_id >= const.USHRT_MAX:
             reply_id -= const.USHRT_MAX
-        buf = pack('HHHH', command, checksum, session_id, reply_id)
+        buf = pack('4H', command, checksum, session_id, reply_id)
         return buf + command_string
 
     @staticmethod
@@ -73,7 +73,7 @@ class ZK(object):
             self.__data_recv = self.__sock.recv(response_size)
         except Exception as e:
             raise ZKNetworkError(str(e))
-        buf = unpack('HHHH', self.__data_recv[:8])
+        buf = unpack('4H', self.__data_recv[:8])
         self.__response = buf[0]
         self.__reply_id = buf[3]
 
@@ -111,7 +111,7 @@ class ZK(object):
 
         self.__send_command(command=const.CMD_CONNECT, response_size=8)
         self.is_connected = True
-        self.__session_id = unpack('HHHH', self.__data_recv[:8])[2]
+        self.__session_id = unpack('4H', self.__data_recv[:8])[2]
         return self
 
     def disconnect(self):
@@ -228,7 +228,7 @@ class ZK(object):
                     data_size -= 1024
 
                 data_recv = self.__sock.recv(8)
-                response = unpack('HHHH', data_recv[:8])[0]
+                response = unpack('4H', data_recv[:8])[0]
                 if response == const.CMD_ACK_OK:
                     if user_data:
                         # The first 4 bytes don't seem to be related to the user
@@ -239,13 +239,10 @@ class ZK(object):
                         user_data = b''.join(user_data)
                         user_data = user_data[12:]
                         while len(user_data) >= 72:
-                            uid, privilege, password, name, _, group_id, user_id = unpack('2sc8s28sc7sx24s',
-                                                                                          user_data.ljust(72)[:72])
-                            uid = int.from_bytes(uid, byteorder='little')
-                            privilege = int.from_bytes(privilege, byteorder='little')
+                            uid, privilege, password, name,group_id, user_id = unpack('Hb8s28px7sx24s',user_data[:72])
                             password = self.__clean_bytes(password)
                             name = self.__clean_bytes(name)
-                            group_id = int.from_bytes(group_id, byteorder='little')
+                            group_id = self.__clean_bytes(group_id)
                             user_id = self.__clean_bytes(user_id)
                             user = User(uid, name, privilege, password, group_id, user_id)
                             users.append(user)
@@ -308,7 +305,7 @@ class ZK(object):
                     data_size -= 1024
 
                 data_recv = self.__sock.recv(8)
-                response = unpack('HHHH', data_recv[:8])[0]
+                response = unpack('4H', data_recv[:8])[0]
                 if response == const.CMD_ACK_OK:
                     if attendance_data:
                         # The first 4 bytes don't seem to be related to the user
