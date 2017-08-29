@@ -8,7 +8,7 @@ sys.path.append("zk")
 DEBUG = True
 
 conn = None
-zk = ZK('200.54.225.67', port=4370, timeout=5)
+zk = ZK('200.54.225.67', port=4371, timeout=5)
 try:
     print('Connecting to device ...')
     conn = zk.connect()

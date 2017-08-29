@@ -49,7 +49,7 @@ class ZK(object):
 
     @staticmethod
     def __clean_bytes(s):
-        return s.decode('windows-1252').strip('\x00')
+        return s.decode('windows-1252').rstrip('\x00')
 
     def __send_command(self, command, command_string=b'', checksum=0, response_size=1024):
         """
@@ -77,8 +77,22 @@ class ZK(object):
         self.__response = buf[0]
         self.__reply_id = buf[3]
 
-        if self.__response in [const.CMD_ACK_OK, const.CMD_PREPARE_DATA]:
+        if self.__response == const.CMD_ACK_OK:
             return {'status': True, 'code': self.__response}
+        elif self.__response == const.CMD_PREPARE_DATA:
+            data_size = self.__get_data_size()
+            data_buf = []
+            while data_size > 0:
+                data_recv = self.__sock.recv(1032)
+                data_buf.append(data_recv[8:])
+                data_size -= 1024
+            data_recv = self.__sock.recv(8)
+            response = unpack('4H', data_recv[:8])[0]
+            if response == const.CMD_ACK_OK:
+                self.__data_recv = b''.join(data_buf)
+                return {'status': True, 'code': response}
+            else:
+                raise ZKErrorResponse("Invalid response")
         else:
             # return {'status': False, 'code': self.__response}
             raise ZKErrorResponse("Invalid response")
@@ -101,8 +115,7 @@ class ZK(object):
         Decode a timestamp retrieved from the timeclock
         """
 
-        t = int.from_bytes(t, byteorder="little")
-        return datetime.fromtimestamp(t + const.TIMESTAMP_DELTA)
+        return datetime.utcfromtimestamp(t + const.TIMESTAMP_DELTA)
 
     def connect(self):
         """
@@ -161,7 +174,7 @@ class ZK(object):
         """
 
         self.__send_command(command=const.CMD_GET_TIME)
-        return self.__decode_time(self.__data_recv[8:])
+        return self.__decode_time(unpack('i',self.__data_recv[8:])[0])
 
     def restart(self):
         """
@@ -218,39 +231,17 @@ class ZK(object):
         cmd_response = self.__send_command(command=const.CMD_USERTEMP_RRQ,
                                            command_string=const.FCT_USER.to_bytes(1, 'little'))
         users = []
-        if cmd_response.get('status'):
-            if cmd_response.get('code') == const.CMD_PREPARE_DATA:
-                data_size = self.__get_data_size()
-                user_data = []
-                while data_size > 0:
-                    data_recv = self.__sock.recv(1032)
-                    user_data.append(data_recv)
-                    data_size -= 1024
-
-                data_recv = self.__sock.recv(8)
-                response = unpack('4H', data_recv[:8])[0]
-                if response == const.CMD_ACK_OK:
-                    if user_data:
-                        # The first 4 bytes don't seem to be related to the user
-                        for index, data in enumerate(user_data):
-                            if index > 0:
-                                user_data[index] = data[8:]
-
-                        user_data = b''.join(user_data)
-                        user_data = user_data[12:]
-                        while len(user_data) >= 72:
-                            uid, privilege, password, name,group_id, user_id = unpack('Hb8s28px7sx24s',user_data[:72])
-                            password = self.__clean_bytes(password)
-                            name = self.__clean_bytes(name)
-                            group_id = self.__clean_bytes(group_id)
-                            user_id = self.__clean_bytes(user_id)
-                            user = User(uid, name, privilege, password, group_id, user_id)
-                            users.append(user)
-
-                            user_data = user_data[72:]
-                else:
-                    raise ZKErrorResponse("Invalid response")
-
+        user_data = self.__data_recv
+        user_data = user_data[4:]
+        while len(user_data) >= 72:
+            uid, role, password, name, group_id, user_id = unpack('Hb8s28sx8s24s', user_data[:72])
+            password = self.__clean_bytes(password)
+            name = self.__clean_bytes(name)
+            group_id = self.__clean_bytes(group_id)
+            user_id = self.__clean_bytes(user_id)
+            user = User(uid, name, role, password, group_id, user_id)
+            users.append(user)
+            user_data = user_data[72:]
         return users
 
     def cancel_capture(self):
@@ -316,13 +307,9 @@ class ZK(object):
                         attendance_data = ''.join(attendance_data)
                         attendance_data = attendance_data[14:]
                         while len(attendance_data) >= 38:
-                            user_id, _, timestamp, status, _ = unpack('24sc4sc10s',
-                                                                      attendance_data.encode('ascii').ljust(40)[:40])
-
-                            user_id = user_id.strip('\x00|\x01\x10x')
+                            user_id, timestamp, status = unpack('24s x i B 10x', attendance_data.encode('ascii')[:40])
+                            user_id = self.__clean_bytes(user_id)
                             timestamp = self.__decode_time(timestamp)
-                            status = int(status.encode("hex"), 16)
-
                             attendance = Attendance(user_id, timestamp, status)
                             attendances.append(attendance)
 
