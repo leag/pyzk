@@ -228,8 +228,7 @@ class ZK(object):
         Return all users
         """
 
-        cmd_response = self.__send_command(command=const.CMD_USERTEMP_RRQ,
-                                           command_string=const.FCT_USER.to_bytes(1, 'little'))
+        self.__send_command(command=const.CMD_USERTEMP_RRQ, command_string=const.FCT_USER.to_bytes(1, 'little'))
         users = []
         user_data = self.__data_recv
         user_data = user_data[4:]
