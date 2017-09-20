@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
-class User(object):
+class User (object):
+    """Class with user names, numbers and privileges"""
+
+    __slots__ = ( 'uid', 'name', 'privilege', 'password', 'group_id', 'user_id',)
 
     def __init__(self, uid, name, privilege, password='', group_id='', user_id=''):
         self.uid = uid

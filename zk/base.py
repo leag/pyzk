@@ -40,7 +40,7 @@ class ZK(object):
         Calculates the checksum of the packet to be sent to the time clock
         """
         if len(pkt) % 2 == 1:
-            pkt += b"\0"
+            pkt += bytes([0])
         s = sum(array.array("H", pkt))
         s = (s >> 16) + (s & 0xffff)
         s += s >> 16
@@ -49,7 +49,13 @@ class ZK(object):
 
     @staticmethod
     def __clean_bytes(s):
-        return s.decode('windows-1252').rstrip('\x00')
+
+        #Terminate string at null byte
+        null_byte = s.find(bytes([0]))
+        if null_byte >=0:
+            s = s[0:null_byte]
+        #Decode string to default charset
+        return s.decode('windows-1252')
 
     def __send_command(self, command, command_string=b'', checksum=0, response_size=1024):
         """
